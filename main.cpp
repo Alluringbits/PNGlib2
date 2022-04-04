@@ -1,17 +1,16 @@
 #include <cstdio>
 #include "PNGlib.h"
+#include "iPNGlib.h"
 #include <iostream>
 #include <fstream>
 #include <exception>
 
 int main(){
-	PNG test{"test"};	
+	//PNG test{"test"};	
 	//std::printf("%s\n", test.fileName().data());
-	test.test();
-	std::string t;
-	std::ifstream file_in{"main.cpp", std::ios::in};
+	//test.test();
 	//std::basic_ios<char> *ftestbase{new std::ifstream{"main.cpp", std::ios::in}};
-	try{
+	/*try{
 		//file_in.open("main.cp", std::ios::in);
 		file_in >> t;
 		std::cout << file_in.fail() << "\n";
@@ -20,7 +19,7 @@ int main(){
 	}
 	catch(std::exception &e){
 		std::cout << e.what() << "\n";
-	}
-	file_in.close();
+	}*/
+	//file_in.close();
 	return 0;
 }

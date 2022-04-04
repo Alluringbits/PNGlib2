@@ -11,7 +11,7 @@
 #include <string_view>
 #include <cstring>
 #include "PNGerr.h"
-
+#include <cstdlib>
 class PNG{
 	public:
 		constexpr PNG() noexcept : fn{}, bPNGios{nullptr}{};
@@ -22,14 +22,17 @@ class PNG{
 
 		//declared for consistency and -weffc++ warnings suppression 
 		constexpr PNG& operator=(const PNG& t) = default;
-		constexpr PNG(const PNG&) = default;
-		virtual ~PNG() noexcept {delete [] bPNGios;};
+		constexpr PNG(const PNG& t) = default;
+		//move ctors for consistency
+		constexpr PNG(PNG && t) = default;
+		constexpr PNG& operator=(PNG && t) = default;
+		~PNG() noexcept {bPNGios = nullptr;};
 		
 		std::ios_base::iostate fsstate() noexcept{
 			return bPNGios->rdstate(); //WILL cause segmentation fault if bPNGios is NOT initialized to point to a fstream object - this is expected in implementation of std::basic_ios, should there be an exception throw?
 		}	
 		
-		//
+		//non constexpr, non noexcept, they are supposed to throw custom PNG std::exception s defined in PNGerr.h
 		bool basic_check(); //checks for health of the file: position of chunks, whether the length is correct, missing critical chunks
 		bool full_check(); //basic_check() + CRC check + [IDAT data segment decompression test]
 		bool repair(); //runs basic_check() and full_check(), attempts to repair  chunks by calculating the correct CRC or chunk length
@@ -39,7 +42,7 @@ class PNG{
 			for(size_t i{}; i<=fn.size(); i++){
 			//	std::printf("%d\n", static_cast<int>(fn[i]));
 			}
-			std::cout << (anChunks[3].data) << "\n";
+			//std::cout << (anChunks[3].data) << "\n";
 			uint8_t cmptest[]{0xAE, 0x42, 0x60, 0x82};
 			std::printf("%d\n", strncmp((const char *)IEND.crc.data(), (const char *) cmptest, 4));
 			IDAT.size = 4;
@@ -56,27 +59,30 @@ class PNG{
 			//constexpr chunkStruct_t(uint32_t s, std::initializer_list<uint8_t> n, uint8_t * d, std::initializer_list<uint8_t>  c) : size{s}, data{d}{std::copy(n.begin(), n.end(), name); std::copy(c.begin(), c.end(), crc);}; failed std::initializer_list ctor
 			constexpr chunk_t(uint32_t s, uint32_t p, std::string_view n, uint8_t * d, std::string_view c) : size{s}, pos{p}, name{n}, data{d}, crc{c}{};
 		
-			//Useless??? If = delete Won't compile unless defined(???). Cannot delete these functions because it says they are being used in the PNG class constructor for some ungodly reason. THey have no reason to exist and they are not being used anywhere since the number of chunks is well defined and constant
+			//until further notice it may be safe to use the default cpy ctors . apparently std::malloc works in constexpr, unsure of repercussions and safety
 			constexpr chunk_t(const chunk_t & t) noexcept = default;
+			//constexpr chunk_t(const chunk_t & t) noexcept : size{t.size}, pos{t.pos}, name{t.name}, data{(uint8_t *) std::malloc(size)}, crc{t.crc}{std::strncpy((char *)data, (char *) t.data, size);};
 			constexpr chunk_t& operator=(const chunk_t & t) = default;
-			~chunk_t() noexcept{ delete [] data;};
+			//move ctors, for consistency
+			constexpr chunk_t(chunk_t && t) noexcept = default;
+			constexpr chunk_t& operator=(chunk_t && t) = default;
+			~chunk_t() noexcept{ delete data;};
 			
 			
 			uint32_t size; 
 			uint32_t pos; //position in the file of the beginning of the chunk, starting from the 4 bytes long chunk size sequence. e.g. pos is ALWAYS 8 (sigSize) for IHDR and it's NEVER 0 for ANY chunk - will be used for file health checking operations
 			std::string_view name; //std::string_view better for optimizations and faster to deal with, especially for safe constructor of the chunk_t and destruction compared to static array of chars/uint8_t
-			uint8_t * data; 
+			uint8_t * data; //arrays must always be dynamically allocated. THe destructor uses the operator delete, every data array for the chunk data must be and has to be dynamically allocated. 
 			std::string_view crc;
 
 		};
-		
 		
 		
 		//enums of internal chunk constants, ancillary chinks order indexes, IHDR bits array indexes
 		enum constants : int8_t	{infoSize=4, ihdrBitsNum=5, sigSize=8, anChunksNum=14}; 
 		enum critical : int8_t 	{ihdr, plte, idat, iend};
 		enum ancillary : int8_t {tRNS, cHRM, gAMA, iCCP, sBIT, sRGB, iTXt, tEXt, zTXt, bKGD, hIST, pHYs, sPLT, tIME};
-		enum ihdrbits : int8_t	{depth, color, compression, filter, interlace};
+		enum ihdrbits : int8_t	{depth=8, color, compression, filter, interlace};
 
 		//std::string_view for critical and ancillary chunks identification names
 		static constexpr std::string_view critID[infoSize]{"IHDR", "PLTE", "IDAT", "IEND"};
@@ -84,15 +90,14 @@ class PNG{
 		
 		//width, height, [bit depth, color scheme, compression method, filter type, interlacing method], these are all included in the IHDR chunk
 		uint32_t width{}, height{};
-		int8_t ihdrBits[5]{};
+		
+	
 
-		
-		
 		//Critical Chunks chunk_t variables
 		static constexpr uint8_t signature[]{137,80,78,71,13,10,26,10}; //this is technically not a chunk
 		//static constexpr chunk_t IHDR{13, {49, 48, 44, 52}, nullptr, {}}; same as IEND
 		chunk_t IHDR{13,8, critID[ihdr], nullptr, {}};
-		chunk_t PLTE{0,0,critID[plte], nullptr, {}}; //though it's not necessary if the palette color bit 
+		chunk_t PLTE{0,0,critID[plte], nullptr, {}}; //though it's not necessary if the palette color bit is not set, the PNG standard classifies it as critical - conformity
 		chunk_t IDAT{0,0,critID[idat], nullptr, {}};
 		//static constexpr chunk_t IEND{0, {0x49, 0x45, 0x4E, 0x44}, nullptr, {0xAE, 0x42, 0x60, 0x82}}; std::initializer_list needed for custom struct ctor- how?
 		//static constexpr chunk_t IEND{0, critID[iend] , nullptr, "\xAE\x42\x60\x82"}; failed static constexpr declaration of IEND with chunk_t type  - weird g++ error
