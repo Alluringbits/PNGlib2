@@ -1,6 +1,6 @@
-CXXFLAGS =  -Wall -pedantic -pedantic-errors -g -ansi -Wextra -Weffc++ -std=c++17 -O3
+CXXFLAGS =  -Wall -pedantic -pedantic-errors -g -ansi -Wextra -Weffc++ -std=c++20 -O3
 O=./ObjectFiles
-FILES = $(O)/main.o $(O)/PNGlib.o $(O)/oPNGlib.o $(O)/iPNGlib.o
+FILES = $(O)/main.o $(O)/PNGlib.o $(O)/oPNGlib.o $(O)/iPNGlib.o $(O)/PNGerr.o
 EXECNAME=a.out
 all: dir $(EXECNAME)
 .PHONY: all clean 

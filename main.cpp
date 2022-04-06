@@ -1,25 +1,22 @@
+
 #include <cstdio>
-#include "PNGlib.h"
 #include "iPNGlib.h"
 #include <iostream>
 #include <fstream>
 #include <exception>
 
+
 int main(){
-	//PNG test{"test"};	
-	//std::printf("%s\n", test.fileName().data());
-	//test.test();
-	//std::basic_ios<char> *ftestbase{new std::ifstream{"main.cpp", std::ios::in}};
-	/*try{
-		//file_in.open("main.cp", std::ios::in);
-		file_in >> t;
-		std::cout << file_in.fail() << "\n";
-		std::bad_alloc err;
-		//throw(err);
+	PNGTRW = false;
+	iPNG test2{};
+	try{
+		std::cout << test2.open("noexists")->what() << "\n";
+		std::cout << test2.lastErr()->what() << "\n";
+		std::cout << test2.lastErr()->code() << "\n";
 	}
 	catch(std::exception &e){
+		std::printf("test\n");
 		std::cout << e.what() << "\n";
-	}*/
-	//file_in.close();
+	}
 	return 0;
 }
