@@ -1,3 +1,4 @@
+CC = g++-10
 CXXFLAGS =  -Wall -pedantic -pedantic-errors -g -ansi -Wextra -Weffc++ -std=c++20 -O3
 O=./ObjectFiles
 FILES = $(O)/main.o $(O)/PNGlib.o $(O)/oPNGlib.o $(O)/iPNGlib.o $(O)/PNGerr.o
@@ -13,8 +14,8 @@ esegui:
 	./$(EXECNAME)
 
 $(EXECNAME): $(FILES)
-	g++ $(CXXFLAGS) $^ $(LIBS) -o $@
+	$(CC) $(CXXFLAGS) $^ $(LIBS) -o $@
 
 $(O)/%.o: %.cpp 
-	g++ $(CXXFLAGS) -c $< $(LIBS) -o $@
+	$(CC) $(CXXFLAGS) -c $< $(LIBS) -o $@
 

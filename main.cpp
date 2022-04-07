@@ -5,17 +5,14 @@
 #include <fstream>
 #include <exception>
 
-
 int main(){
-	PNGTRW = false;
-	iPNG test2{};
+	PNG::PNGTRW = false;
+	PNG::iPNG test2{};
 	try{
-		std::cout << test2.open("noexists")->what() << "\n";
-		std::cout << test2.lastErr()->what() << "\n";
-		std::cout << test2.lastErr()->code() << "\n";
+		PNG::printMsg(test2.open("main"));
+
 	}
 	catch(std::exception &e){
-		std::printf("test\n");
 		std::cout << e.what() << "\n";
 	}
 	return 0;

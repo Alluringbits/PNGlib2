@@ -2,5 +2,7 @@
 
 #include "PNGlib.h"
 
-class oPNG: public PNG{
-};
+namespace PNG{
+	class oPNG: public basic_PNG{
+	};
+}

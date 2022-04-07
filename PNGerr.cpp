@@ -1,2 +1,4 @@
 #include "PNGerr.h"
-bool PNGTRW = true;
+namespace PNG{
+	bool PNGTRW = true;
+}
