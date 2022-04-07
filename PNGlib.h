@@ -59,6 +59,7 @@ class PNG{
 			return errLs;
 		}
 
+
 		bool copy(const PNG& t); //replacement for the copy ctors, ONLY copies DATA (IDAT, PLTE, IHDR, width, height and other non-constexpr non-static variables but NOT the filename), can't be applied well if the PNG derived classes haven't been initialised (e.g. without filename and without initialization of the std::*fstream obj)
 		//non constexpr, non noexcept, they are supposed to throw custom PNG std::exception s defined in PNGerr.h
 		bool basic_check(); //checks for health of the file: position of chunks, whether the length is correct, missing critical chunks
