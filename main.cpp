@@ -7,13 +7,8 @@
 
 int main(){
 	PNG::PNGTRW = false;
-	PNG::iPNG test2{};
-	try{
-		PNG::printMsg(test2.open("main"));
-
-	}
-	catch(std::exception &e){
-		std::cout << e.what() << "\n";
-	}
+	PNG::iPNG test2{"manul.png", "vs"};
+	test2.load();
+	test2.close();
 	return 0;
 }
