@@ -1,6 +1,5 @@
 #pragma once
 #include <exception>
-#include <variant>
 #include <cstdint>
 #include <string>
 #include <cstdio>

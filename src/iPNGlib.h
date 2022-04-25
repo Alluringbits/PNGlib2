@@ -32,9 +32,12 @@ namespace PNG{
 			const std::unique_ptr<PNGmsgBase>& readIHDR();
 			const std::unique_ptr<PNGmsgBase>& readPLTE();
 			const std::unique_ptr<PNGmsgBase>& readIDAT();
-			const std::unique_ptr<PNGmsgBase>& readAnc(int i);
+			const std::unique_ptr<PNGmsgBase>& readAncS(int i);
+			const std::unique_ptr<PNGmsgBase>& readAncM(int i);
+			const std::unique_ptr<PNGmsgBase>& decompr();
+			const std::unique_ptr<PNGmsgBase>& defilter();
 
 			std::streamoff fs{};
-			bool isLoaded{false}, plteFound{false}, IENDcomplete{false};
+			bool isLoaded{false};
 	};
 }

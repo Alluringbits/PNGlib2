@@ -33,6 +33,8 @@
 
 
 ObjectFiles
+build
 *.swp
 
+largeImage.png
 *.oxy

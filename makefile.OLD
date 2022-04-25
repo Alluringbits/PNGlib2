@@ -19,4 +19,3 @@ $(EXECNAME): $(FILES)
 
 $(O)/%.o: %.cpp 
 	$(CC) $(CXXFLAGS) -c $< $(LIBS)  -o $@
-
