@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PNGincludes.h"
+#include <fstream>
 
 #ifndef __PNGEXC
 	#undef PNGEXC 
@@ -244,6 +245,12 @@ namespace PNG{
 				for(size_t i{}; i<s; i++) std::printf("%#x ", l[i]);
 				std::printf("\n");
 			}
+			void dumpHex(const char *fn, std::vector<unsigned char> & s) const noexcept{
+				std::ofstream file_out{fn, std::ios::out};
+				file_out.write(rcp(s.data()), s.size());
+				file_out.close();
+			}
+
 			std::string buf1{"\0\0\0\0", 4};
 			std::string buf2{"\0\0\0\0", 4};
 			z_stream buffStream;
