@@ -156,7 +156,7 @@ namespace PNG{
 
 			//Critical Chunks chunk_t variables
 			//static constexpr unsigned char signature[]{137,80,78,71,13,10,26,10}; //this is technically not a chunk
-			static constexpr std::string_view signature{"\x89\x50\x4e\x47\xd\xa\x1a\xa"};
+			static constexpr std::string_view signature{"\x89\x50\x4e\x47\xd\xa\x1a\xa"}; //this is technically not a chunk
 			chunk_t IHDR{ihdrSize,sigSize, critID[ihdr], {},  0, false};
 			size_t  pixelBytes{};
 			float bitsMult{1};
