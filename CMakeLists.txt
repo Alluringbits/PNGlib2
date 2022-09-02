@@ -4,7 +4,8 @@ find_package(ZLIB)
 
 project(PNGlib VERSION 1.0)
 
-SET(GCC_FLAGS "-Wall -pedantic -pedantic-errors -g -ansi -Wextra -Weffc++ -std=c++20 -O3")
+#SET(GCC_FLAGS "-Wall -g -pedantic -pedantic-errors -ansi -Wextra -Weffc++ -std=c++20 -O3")
+SET(GCC_FLAGS "-Wall -g -pedantic -pedantic-errors -ansi -Wextra -Weffc++ -std=c++20 -O0")
 add_definitions(${GCC_FLAGS})
 
 

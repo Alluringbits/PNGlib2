@@ -156,7 +156,7 @@ namespace PNG{
 	const std::unique_ptr<PNGmsgBase>& iPNG::readIHDR(){
 			buf1.resize(sigSize);
 			PNGifs.read(buf1.data(), sigSize);
-			if(buf1.compare(0,sigSize, reinterpret_cast<const char *>(signature))) return pngraise(PNGerr::chunk_err::no_signature(fn.data()));
+			if(buf1.compare(0,sigSize, signature)) return pngraise(PNGerr::chunk_err::no_signature(fn.data()));
 			buf1.resize(infoSize);
 			PNGifs.read(buf1.data(), infoSize);
 			if(btoi(buf1)!= ihdrSize) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), critID[ihdr].data()));
