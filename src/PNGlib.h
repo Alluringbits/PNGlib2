@@ -21,8 +21,8 @@ namespace PNG{
 				livePrint(flags);
 				initanC();
 			};
-			virtual const std::unique_ptr<PNGmsgBase>& open(std::string_view) PNGEXC = 0;
-			virtual const std::unique_ptr<PNGmsgBase>& close() = 0;
+			virtual const message& open(std::string_view) PNGEXC = 0;
+			virtual const message& close() = 0;
 			constexpr const std::string_view  fileName() const noexcept{return fn;};
 
 			//std::basic_istream and std::basic_ostream have the copy ctors deleted, since the file interface is done through that, only the move ctors will be declared. A separated function can copy the data contents from one object PNG to another object PNG
@@ -43,21 +43,21 @@ namespace PNG{
 			
 			void emptyMsgList() noexcept{
 				msgLs.clear();
-				msgLs.push_back(std::make_unique<noMsg>());
+				msgLs.push_back(noMsg());
 			}
 			
-			const std::unique_ptr<PNGmsgBase>& lastMsg() noexcept{
+			const message& lastMsg() noexcept{
 				//if(msgLs.empty()) msgLs.push_back(std::make_unique<noMsg>()); //consequence of using std::unique_ptr, unless I'm missing something, is that an already initialized neutral message (neutralMsg) can be pushed back to the to the vector of unique ptrs to the messages. It must be constructed in place with make_unique
 				if(msgLs.empty()) return neutralMsg;
 				return msgLs.front();
 			}
 			
-			const std::vector<std::unique_ptr<PNGmsgBase>>& msgList() noexcept{
+			const std::vector<message>& msgList() noexcept{
 				return msgLs;
 			}
 			
 			void printMsgList() const noexcept{
-				std::for_each(msgLs.cbegin(),msgLs.cend(), [](const std::unique_ptr<PNGmsgBase>& m){printMsg(m, 0,1 );});
+				std::for_each(msgLs.cbegin(),msgLs.cend(), [](const message& m){printMsg(m, 0,1 );});
 			}
 
 
@@ -199,11 +199,11 @@ namespace PNG{
 			
 
 			//error vector list - after some consideration there will be no handling of errors in a std::queue system with popping of first error after it has been requested by the client - might be worth looking into it in the future for a possible efficient and functional impl
-			std::vector<std::unique_ptr<PNGmsgBase>> msgLs{};//memorandum: change and replace unique_ptrs with actual normal PNGmsgBase objects, they may not even be needed as the objects would be returned by the functions as const references to the vector member, rendeding smart pointers and assurance it gets deleted completely useless as the deletion is assured by the vector destructor and destructor of PNGmsgBase itself. note: it may be that returning a non pointer address to a base class with a derived class is not feasible through the usage of addresses, the only way would be by returning a const pointer to the element rather than the address
-			std::unique_ptr<PNGmsgBase> neutralMsg{std::make_unique<noMsg>()};	
+			std::vector<message> msgLs{};//memorandum: change and replace unique_ptrs with actual normal PNGmsgBase objects, they may not even be needed as the objects would be returned by the functions as const references to the vector member, rendeding smart pointers and assurance it gets deleted completely useless as the deletion is assured by the vector destructor and destructor of PNGmsgBase itself. note: it may be that returning a non pointer address to a base class with a derived class is not feasible through the usage of addresses, the only way would be by returning a const pointer to the element rather than the address
+			message neutralMsg{noMsg()};	
 			template<typename T>
-			const std::unique_ptr<PNGmsgBase>&  pngraise(T && e){
-				msgLs.push_back(std::make_unique<T>(std::forward<T>(e)));
+			const message&  pngraise(T && e){
+				msgLs.push_back(message(std::forward<T>(e)));
 				if(PNGTRW) throw(e);
 				else{
 					if(!(quietMsg)) printMsg(msgLs.back(), softMsg, shortMsg);
@@ -212,7 +212,7 @@ namespace PNG{
 			}
 			template<typename T>
 			void pnglog(T && e){
-				msgLs.push_back(std::make_unique<T>(std::forward<T>(e)));
+				msgLs.push_back(message(std::forward<T>(e)));
 				if(!(quietMsg)) printMsg(msgLs.back(), softMsg, shortMsg);
 			}
 			char * rcp(unsigned char * t) const {

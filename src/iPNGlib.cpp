@@ -3,7 +3,7 @@
 extern bool PNGTRW;
 
 namespace PNG{
-	const std::unique_ptr<PNGmsgBase>& iPNG::open(std::string_view t) PNGEXC {
+	const message& iPNG::open(std::string_view t) PNGEXC {
 		if(PNGifs.is_open()) return pngraise(PNGerr::io_err::open_new(fn.data(), t.data()));
 		fn = t;
 		PNGifs.open(fn.data(), std::ios::binary);
@@ -21,7 +21,7 @@ namespace PNG{
 		PNGifs.seekg(temppos, std::ios_base::beg);
 		return neutralMsg;
 	}
-	const std::unique_ptr<PNGmsgBase>& iPNG::close(){
+	const message& iPNG::close(){
 		PNGifs.clear();
 		try{
 			isClosed = true;
@@ -34,7 +34,7 @@ namespace PNG{
 		return neutralMsg;
 	}
 
-	const std::unique_ptr<PNGmsgBase>& iPNG::load(){
+	const message& iPNG::load(){
 		buffStream.zalloc = Z_NULL;
 		buffStream.zfree = Z_NULL;
 		buffStream.opaque = Z_NULL;
@@ -56,12 +56,12 @@ namespace PNG{
 		}
 		try{
 			PNGifs.exceptions(std::ifstream::failbit);
-			if(*(readIHDR().get())) return msgLs.back();
+			if(readIHDR()) return msgLs.back();
 			decompressedData.resize(static_cast<size_t>(1.1*(height+(width/bitsMult)*height*pixelBytes)));
 			//rawPixelData.resize(decompressedData.size()-height);
-			while(!(IEND.exist)) if(*(readChunk().get())) return msgLs.back();
+			while(!(IEND.exist)) if(readChunk()) return msgLs.back();
 			//if(*(decompr().get())) return msgLs.back(); //This was used when the inflation process was done in the end and not interleaved.
-			if(*(defilter().get())) return msgLs.back();
+			if(defilter()) return msgLs.back();
 			/*decompressedData.resize(buffStream.total_out); // for interleaved filtering- slower than final filtering
 			rawPixelData.resize(buffStream.total_out-height);
 			inflateEnd(&buffStream);*/
@@ -86,7 +86,7 @@ namespace PNG{
 		}
 	}
 
-	const std::unique_ptr<PNGmsgBase>& iPNG::readChunk(){
+	const message& iPNG::readChunk(){
 		std::streamoff tempPos{PNGifs.tellg()};
 		PNGifs.read(buf1.data(), infoSize);
 		uint32_t chunkSize{btoi(buf1)};
@@ -153,7 +153,7 @@ namespace PNG{
 
 	}
 
-	const std::unique_ptr<PNGmsgBase>& iPNG::readIHDR(){
+	const message& iPNG::readIHDR(){
 			buf1.resize(sigSize);
 			PNGifs.read(buf1.data(), sigSize);
 			if(buf1.compare(0,sigSize, signature)) return pngraise(PNGerr::chunk_err::no_signature(fn.data()));
@@ -243,7 +243,7 @@ namespace PNG{
 			return neutralMsg;
 	}
 	
-	const std::unique_ptr<PNGmsgBase>& iPNG::readPLTE(){
+	const message& iPNG::readPLTE(){
 		if(PLTE.exist) return pngraise(PNGerr::chunk_err::multiple(fn.data(), critID[plte].data()));
 		PLTE.data.resize(PLTE.size);
 		PNGifs.read(rcp(PLTE.data.data()), PLTE.size);
@@ -254,7 +254,7 @@ namespace PNG{
 		return neutralMsg;
 	}
 
-	const std::unique_ptr<PNGmsgBase>& iPNG::readIDAT(){
+	const message& iPNG::readIDAT(){
 		/*size_t startPos{compressedData.size()};
 		compressedData.resize(startPos+IDAT.back().size);
 		PNGifs.read(rcp(compressedData.data()+startPos), IDAT.back().size);
@@ -270,7 +270,7 @@ namespace PNG{
 		//return neutralMsg;
 	}
 
-	const std::unique_ptr<PNGmsgBase>& iPNG::readAncS(int i){
+	const message& iPNG::readAncS(int i){
 		pnglog(PNGwarning(std::string("Ancillary chunk with name \"")+ancID[i].data()+"\" is not supported."));
 		anChunksS[i].data.resize(anChunksS[i].size);
 		PNGifs.read(rcp(anChunksS[i].data.data()),anChunksS[i].size);
@@ -281,7 +281,7 @@ namespace PNG{
 		return neutralMsg;
 	}
 
-	const std::unique_ptr<PNGmsgBase>& iPNG::readAncM(int i){
+	const message& iPNG::readAncM(int i){
 		pnglog(PNGwarning(std::string("Ancillary chunk with name \"")+ancID[i+anChunksSNum].data()+"\" is not supported."));
 		anChunksM[i].back().data.resize(anChunksM[i].back().size);
 		PNGifs.read(rcp(anChunksM[i].back().data.data()), anChunksM[i].back().size);
@@ -292,7 +292,7 @@ namespace PNG{
 		return neutralMsg;
 	}
 
-	const std::unique_ptr<PNGmsgBase>& iPNG::decompr(){
+	const message& iPNG::decompr(){
 		/*size_t totalBitSize{static_cast<size_t>(1.1*(height+width*height*pixelBytes))};
 		decompressedData.resize(totalBitSize);
 		switch(uncompress(decompressedData.data(), &totalBitSize ,compressedData.data(), compressedData.size())){*/
@@ -319,7 +319,7 @@ namespace PNG{
 		return neutralMsg;
 		//return defilter(); //for interleaved filtering
 	}
-	const std::unique_ptr<PNGmsgBase>& iPNG::defilter(){
+	const message& iPNG::defilter(){
 		size_t rawPxlRow{static_cast<size_t>(width/bitsMult)*pixelBytes};
 		decompressedData.resize(buffStream.total_out);
 		rawPixelData.resize(decompressedData.size()-height);
