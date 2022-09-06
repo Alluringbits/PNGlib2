@@ -4,22 +4,37 @@
 #include <string>
 #include <cstdio>
 #include <memory>
+#include <string_view>
 
 namespace PNG{
-	struct PNGmsgBase : public std::exception{
-		const char * what() const noexcept override {
-			return val.data();
+
+	struct PNGmsgBase{
+		const std::string& what() const noexcept { //CONVERT INTO STD::STRING_VIEW ABSOLUTELY!!!!!!
+			return val;
 		}
-		virtual const char * type() const noexcept = 0;
+		virtual const std::string_view type() const noexcept = 0;
 		virtual uint16_t code() const noexcept = 0;
 		virtual operator bool() const noexcept = 0;
 		protected:
 			std::string val{};
 	};
+	
+	struct message{
+		template<typename T>
+		message(T a) noexcept : msg{std::make_unique<T>(a)}{};
+		const std::string_view type() const noexcept{return msg->type();};
+		uint16_t code() const noexcept {msg->code();};
+		const std::string& what() const noexcept{msg->what();};
+		operator bool() const noexcept{ return bool(msg);};
+
+		private:
+			std::unique_ptr<PNGmsgBase> msg;
+	};
+
 	struct noMsg : public PNGmsgBase{
 		noMsg() noexcept{ val = "No errors were thrown by this funciton.";};
-		const char* type() const noexcept override{
-			return "None";
+		const std::string_view type() const noexcept override{
+			return tp;
 		}
 		uint16_t code() const noexcept override{
 			return 0;
@@ -27,18 +42,20 @@ namespace PNG{
 		operator bool() const noexcept override{
 			return false;
 		}
+		private:
+			std::string_view tp{"None"};
 	};
 	
 	inline void printMsg(const std::unique_ptr<PNGmsgBase>&  m, bool softMsg = true, bool shortMsg = true) noexcept{
 		if(softMsg){
-			if(!(m->code())) (shortMsg) ? std::printf("%s: %s\n",m->type(), m->what()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m->type(), m->code(), m->what());	
+			if(!(m->code())) (shortMsg) ? std::printf("%s: %s\n",m->type().data(), m->what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m->type(), m->code(), m->what());	
 		}
-		else (shortMsg) ? std::printf("%s: %s\n",m->type(), m->what()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m->type(), m->code(), m->what());
+		else (shortMsg) ? std::printf("%s: %s\n",m->type().data(), m->what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m->type(), m->code(), m->what());
 	}
 	inline void printMsg(const PNGmsgBase & m, bool softMsg = true, bool shortMsg = true) noexcept{
 		if(softMsg){
-			if(!(m.code())) (shortMsg) ? std::printf("%s: %s\n",m.type(), m.what()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type(), m.code(), m.what());	
+			if(!(m.code())) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type(), m.code(), m.what());	
 		}
-		else (shortMsg) ? std::printf("%s: %s\n",m.type(), m.what()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type(), m.code(), m.what());
+		else (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type(), m.code(), m.what());
 	}
 }

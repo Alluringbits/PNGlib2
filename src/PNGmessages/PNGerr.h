@@ -4,17 +4,19 @@
 namespace PNG{
 	namespace PNGerr{
 		struct PNGbasicErr : public PNGmsgBase{
-			const char * type() const noexcept override{
-				return "\033[1;31mError\033[0m";
+			const std::string_view type() const noexcept override{
+				return tp;
 			}
 			virtual uint16_t code() const noexcept = 0;
 			operator bool() const noexcept override{
 				return true;
 			}
+			private:
+				std::string_view tp{"\033[1;31mError\033[0m"};
 		};
 		struct testErr : public PNGbasicErr{
 			testErr() noexcept {val = "This is an Error test Message.";};
-			uint16_t code() const noexcept { return 0;};
+			uint16_t code() const noexcept { return 92233;};
 		};
 
 		namespace io_err{

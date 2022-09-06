@@ -16,12 +16,14 @@ namespace PNG{
 	}*/
 	struct PNGwarning : public PNGmsgBase{
 		PNGwarning(std::string l) noexcept{ val  = l;};
-		const char * type() const noexcept override{
-			return "\033[1;35mWarning\033[0m";
+		const std::string_view type() const noexcept override{
+			return tp;
 		}
 		uint16_t code() const noexcept { return 0;};
 		operator bool() const noexcept override{
 			return false;
 		}
+		private:
+			std::string_view tp{"\033[1;35mWarning\033[0m"};
 	};
 }

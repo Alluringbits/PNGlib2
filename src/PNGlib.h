@@ -203,9 +203,9 @@ namespace PNG{
 			std::unique_ptr<PNGmsgBase> neutralMsg{std::make_unique<noMsg>()};	
 			template<typename T>
 			const std::unique_ptr<PNGmsgBase>&  pngraise(T && e){
+				msgLs.push_back(std::make_unique<T>(std::forward<T>(e)));
 				if(PNGTRW) throw(e);
 				else{
-					msgLs.push_back(std::make_unique<T>(std::forward<T>(e)));
 					if(!(quietMsg)) printMsg(msgLs.back(), softMsg, shortMsg);
 					return msgLs.back();
 				}
