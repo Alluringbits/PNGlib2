@@ -3,7 +3,7 @@
 #include "PNGincludes.h"
 #include <fstream>
 
-#ifndef __PNGEXC
+#ifndef PNGEXC
 	#undef PNGEXC 
 	#define PNGEXC 
 #else
@@ -12,7 +12,6 @@
 
 
 namespace PNG{
-	extern bool PNGTRW;
 
 	class basic_PNG{
 		public:
@@ -77,6 +76,8 @@ namespace PNG{
 				(flags[1] == 's') ? (shortMsg = true) : (shortMsg = false);
 			}
 
+			void setThrow(bool a){PNGTRW = a;};
+
 			
 			void reset() noexcept; //empties out everything, resets every byte and zeroes every char array
 
@@ -90,7 +91,7 @@ namespace PNG{
 			}	
 				
 		protected:
-				
+			bool PNGTRW{false};	
 			//types declarations string_view and chunk_t
 			//using sv=std::string_view; //
 			class chunk_t {//usage of chunk_t::data requires first to resize it to the chunk_t::size value, then the chunk_t::data::data() can be used to return the pointer for the read(*,n) func

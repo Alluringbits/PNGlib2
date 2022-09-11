@@ -1,6 +1,8 @@
 #include "iPNGlib.h"
+#include <chrono>
 
-extern bool PNGTRW;
+#define INTLEA 1 
+#define INTFIL 0  
 
 namespace PNG{
 	const message& iPNG::open(std::string_view t) PNGEXC {
@@ -35,6 +37,7 @@ namespace PNG{
 	}
 
 	const message& iPNG::load(){
+#if INTLEA
 		buffStream.zalloc = Z_NULL;
 		buffStream.zfree = Z_NULL;
 		buffStream.opaque = Z_NULL;
@@ -54,17 +57,28 @@ namespace PNG{
 				return pngraise(PNGerr::unexpected(fn.data()));
 				break;
 		}
+#endif
 		try{
 			PNGifs.exceptions(std::ifstream::failbit);
 			if(readIHDR()) return msgLs.back();
 			decompressedData.resize(static_cast<size_t>(1.1*(height+(width/bitsMult)*height*pixelBytes)));
 			//rawPixelData.resize(decompressedData.size()-height);
+			auto start = std::chrono::steady_clock::now();
 			while(!(IEND.exist)) if(readChunk()) return msgLs.back();
-			//if(*(decompr().get())) return msgLs.back(); //This was used when the inflation process was done in the end and not interleaved.
+#if !INTLEA
+			if(decompr()) return msgLs.back(); //This was used when the inflation process was done in the end and not interleaved.
+#endif
+#if !INTFIL
 			if(defilter()) return msgLs.back();
-			/*decompressedData.resize(buffStream.total_out); // for interleaved filtering- slower than final filtering
+			auto stop = std::chrono::steady_clock::now();
+#else
+			auto stop = std::chrono::steady_clock::now();
+			decompressedData.resize(buffStream.total_out); // for interleaved filtering- slower than final filtering
 			rawPixelData.resize(buffStream.total_out-height);
-			inflateEnd(&buffStream);*/
+			inflateEnd(&buffStream);
+#endif
+			std::chrono::duration<double> dist = stop-start;
+			std::cout << dist.count() << "\n";
 			return neutralMsg;
 		}
 		catch(const std::ios_base::failure & e){
@@ -255,19 +269,23 @@ namespace PNG{
 	}
 
 	const message& iPNG::readIDAT(){
-		/*size_t startPos{compressedData.size()};
-		compressedData.resize(startPos+IDAT.back().size);
-		PNGifs.read(rcp(compressedData.data()+startPos), IDAT.back().size);
-		IDAT.back().crc = crc32(critCRC[idat], compressedData.data()+startPos, IDAT.back().size);*/
-
+#if INTLEA
 		IDAT.back().data.resize(IDAT.back().size);
 		PNGifs.read(rcp(IDAT.back().data.data()), IDAT.back().size);
 		IDAT.back().crc = crc32(critCRC[idat], IDAT.back().data.data(), IDAT.back().size);
-		
+#else
+		size_t startPos{compressedData.size()};
+		compressedData.resize(startPos+IDAT.back().size);
+		PNGifs.read(rcp(compressedData.data()+startPos), IDAT.back().size);
+		IDAT.back().crc = crc32(critCRC[idat], compressedData.data()+startPos, IDAT.back().size);
+#endif		
 		PNGifs.read(buf1.data(), infoSize);
 		if(btoi(buf1) != IDAT.back().crc) return pngraise(PNGerr::chunk_err::bad_crc32(fn.data(), "IDAT"));
+#if INTLEA
 		return decompr();
-		//return neutralMsg;
+#else
+		return neutralMsg;
+#endif
 	}
 
 	const message& iPNG::readAncS(int i){
@@ -293,14 +311,17 @@ namespace PNG{
 	}
 
 	const message& iPNG::decompr(){
-		/*size_t totalBitSize{static_cast<size_t>(1.1*(height+width*height*pixelBytes))};
-		decompressedData.resize(totalBitSize);
-		switch(uncompress(decompressedData.data(), &totalBitSize ,compressedData.data(), compressedData.size())){*/
+#if INTLEA
 		buffStream.next_in = IDAT.back().data.data();
 		buffStream.avail_in = IDAT.back().data.size();
 		buffStream.next_out = decompressedData.data()+buffStream.total_out;
 		buffStream.avail_out = decompressedData.size()-buffStream.total_out;
 		switch(inflate(&buffStream, Z_NO_FLUSH)){
+#else
+		size_t totalBitSize{static_cast<size_t>(1.1*(height+width*height*pixelBytes))};
+		decompressedData.resize(totalBitSize);
+		switch(uncompress(decompressedData.data(), &totalBitSize ,compressedData.data(), compressedData.size())){
+#endif
 			case Z_OK:
 			case Z_STREAM_END:
 				break;
@@ -315,20 +336,31 @@ namespace PNG{
 				return pngraise(PNGerr::unexpected(fn.data()));
 				break;
 		}
-		//decompressedData.resize(totalBitSize);
+#if !INTLEA
+		decompressedData.resize(totalBitSize);
+#endif
+#if INTFIL && INTLEA
+		return defilter(); //for interleaved filtering
+#else
 		return neutralMsg;
-		//return defilter(); //for interleaved filtering
+#endif
 	}
 	const message& iPNG::defilter(){
 		size_t rawPxlRow{static_cast<size_t>(width/bitsMult)*pixelBytes};
+#if !INTFIL && INTLEA
 		decompressedData.resize(buffStream.total_out);
-		rawPixelData.resize(decompressedData.size()-height);
 		inflateEnd(&buffStream);
-		/*static size_t j{};
-		size_t rowsSoFar{static_cast<size_t>(buffStream.total_out/(rawPxlRow+1))};
-		//std::cout << j << "\t" << rowsSoFar << "\n";
-		for(;j<rowsSoFar; j++){*/
+#endif
+#if !INTFIL
+		rawPixelData.resize(decompressedData.size()-height);
 		for(size_t j{}; j<height; j++){
+#endif
+#if INTFIL && INTLEA
+		static size_t j{};
+		size_t rowsSoFar{static_cast<size_t>(buffStream.total_out/(rawPxlRow+1))};
+		rawPixelData.resize(buffStream.total_out-rowsSoFar);
+		for(;j<rowsSoFar; j++){
+#endif
 			size_t tmpRow{j*rawPxlRow};
 			size_t tmpRowA{tmpRow-pixelBytes};
 			size_t tmpRowB{tmpRow-rawPxlRow};
