@@ -9,7 +9,7 @@
 namespace PNG{
 
 	struct PNGmsgBase{
-		const std::string& what() const noexcept { //CONVERT INTO STD::STRING_VIEW ABSOLUTELY!!!!!!
+		const std::string& what() const noexcept { 
 			return val;
 		}
 		virtual const std::string_view type() const noexcept = 0;
@@ -48,14 +48,14 @@ namespace PNG{
 	
 	inline void printMsg(const message&  m, bool softMsg = true, bool shortMsg = true) noexcept{
 		if(softMsg){
-			if(!(m.code())) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type(), m.code(), m.what());	
+			if(!(m.code())) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());	
 		}
-		else (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type(), m.code(), m.what());
+		else (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());
 	}
 	inline void printMsg(const PNGmsgBase & m, bool softMsg = true, bool shortMsg = true) noexcept{
 		if(softMsg){
-			if(!(m.code())) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type(), m.code(), m.what());	
+			if(!(m.code())) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());	
 		}
-		else (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type(), m.code(), m.what());
+		else (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());
 	}
 }

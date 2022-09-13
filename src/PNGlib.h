@@ -2,6 +2,7 @@
 
 #include "PNGincludes.h"
 #include <fstream>
+#include <new>
 
 #ifndef PNGEXC
 	#undef PNGEXC 
@@ -15,25 +16,63 @@ namespace PNG{
 
 	class basic_PNG{
 		public:
+			/**
+			 * @brief Default empty constructor. bPNGios was intended as a single variable for both inherited input and output file stream,
+			 * 	  However it should be deprecated, no difference.
+			 */
 			basic_PNG() noexcept : fn{}, bPNGios{nullptr}{};
+			/**
+			 * @brief Constructor base for the base image class. 
+			 *
+			 * @param filename filename of the Image file.
+			 * @param flags modes to display error messages or other messages.
+			 *
+			 * See PNG::iPNG::iPNG() for details on the error modes and flags. 
+			 * The constructor calls the function used to initialize ancillaty chunks initanC().
+			 */
 			basic_PNG(const std::string_view filename, const std::string_view flags = "ss") noexcept : fn{filename}, bPNGios{nullptr}{
 				livePrint(flags);
 				initanC();
 			};
 			virtual const message& open(std::string_view) PNGEXC = 0;
 			virtual const message& close() = 0;
+			/**
+			 * @brief returns the filename.
+			 *
+			 * @return const std::string_view of the filename of the currently opened file.
+			 */
 			constexpr const std::string_view  fileName() const noexcept{return fn;};
 
 			//std::basic_istream and std::basic_ostream have the copy ctors deleted, since the file interface is done through that, only the move ctors will be declared. A separated function can copy the data contents from one object PNG to another object PNG
 			basic_PNG& operator=(const basic_PNG& t) = delete;
 			basic_PNG(const basic_PNG& t) = delete;
 			//move ctors for consistency and usefulness
+			/**
+			 * @brief Default move constructor.
+			 *
+			 * @param t basic_PNG to be moved.
+			 */
 			basic_PNG(basic_PNG && t) noexcept = default;
+			/**
+			 * @brief Default operator = move constructor.
+			 *
+			 * @param t basic_PNG to be moved.
+			 *
+			 * @return moved basic_PNG.
+			 */
 			basic_PNG& operator=(basic_PNG && t) noexcept = default;
+			/**
+			 * @brief Basic destructor.
+			 */
 			virtual ~basic_PNG() noexcept {bPNGios = nullptr;};//FOr safety sets to nullptr the std::basic_ios<char> ptr
 			
+			/**
+			 * @brief returns the current state of the file stream.
+			 *
+			 * @return std::ios_base::iostate that indicates the current state of the file stream.
+			 */
 			std::ios_base::iostate fsstate() noexcept{
-				return bPNGios->rdstate(); //WILL cause segmentation fault if bPNGios is NOT initialized to point to a fstream object - this is expected in implementation of std::basic_ios, should there be an exception throw?
+				return bPNGios->rdstate(); //WILL cause segmentation fault if bPNGios is NOT initialized to point to a fstream object - this is expected in implementation of std::basic_ios, should there be an exception thro?
 			}	
 
 
@@ -91,6 +130,7 @@ namespace PNG{
 			}	
 				
 		protected:
+			PNG::PNGerr::memory memer{};
 			bool PNGTRW{false};	
 			//types declarations string_view and chunk_t
 			//using sv=std::string_view; //
@@ -211,6 +251,23 @@ namespace PNG{
 					return msgLs.back();
 				}
 			}
+			const message& pngraise(PNG::PNGerr::memory & e){
+				try{
+					msgLs.push_back(e);
+				}
+				catch(...){
+					if(PNGTRW) throw(e);
+					else{
+						if(!(quietMsg)) printMsg(e, softMsg, shortMsg);
+						return e;
+					}
+				}
+				if(PNGTRW) throw(e);
+				else{
+					if(!(quietMsg)) printMsg(msgLs.back(), softMsg, shortMsg);
+					return msgLs.back();
+				}
+			}
 			template<typename T>
 			void pnglog(T && e){
 				msgLs.push_back(message(std::forward<T>(e)));
@@ -256,6 +313,7 @@ namespace PNG{
 			std::string buf1{"\0\0\0\0", 4};
 			std::string buf2{"\0\0\0\0", 4};
 			z_stream buffStream;
+			
 	};
 }
 

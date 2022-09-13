@@ -47,6 +47,10 @@ namespace PNG{
 				file_end_prematurely(const char *l) noexcept{val = std::string(l)+": The File ended prematurely before the IEND chunk.";};
 				uint16_t code() const noexcept override {return 15;};
 			};
+			struct empty_filename : public PNGbasicErr{
+				empty_filename(const char *l) noexcept{val= std::string(l)+": An empty filename was provided.";};
+				uint16_t code() const noexcept override {return 21;};
+			};
 
 		}
 		namespace chunk_err{
@@ -105,8 +109,8 @@ namespace PNG{
 			version(const char *l) noexcept{ val = std::string(l)+": Incorrect zlib version. Unable to compress or decmpress.";};
 			uint16_t code() const noexcept override { return 20;};
 		};
-		struct memory : public std::exception{
-			const char * what() const noexcept override {return "Loading or creation of the file could not be completed due to insufficient system memory.";};
+		struct memory : public PNGbasicErr{
+			memory() noexcept{ val = "Loading or creation of the file could not be completed due to insufficient system memory.";};
 			uint16_t code() const noexcept{return 16;};
 		};
 		struct unexpected : public PNGbasicErr{

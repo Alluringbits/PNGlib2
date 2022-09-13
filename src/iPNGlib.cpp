@@ -1,12 +1,13 @@
 #include "iPNGlib.h"
-#include <chrono>
 
 #define INTLEA 1 
 #define INTFIL 0  
 
 namespace PNG{
 	const message& iPNG::open(std::string_view t) PNGEXC {
+		try{
 		if(PNGifs.is_open()) return pngraise(PNGerr::io_err::open_new(fn.data(), t.data()));
+		if(!t.length()) return pngraise(PNGerr::io_err::empty_filename("open()"));
 		fn = t;
 		PNGifs.open(fn.data(), std::ios::binary);
 		if(PNGifs.fail()) return pngraise(PNGerr::io_err::io_file(fn.data()));
@@ -21,18 +22,36 @@ namespace PNG{
 		fs = PNGifs.tellg();
 		PNGifs.clear();
 		PNGifs.seekg(temppos, std::ios_base::beg);
+		}
+		catch(const std::bad_alloc & c){
+			return pngraise(memer);
+		}
 		return neutralMsg;
 	}
 	const message& iPNG::close(){
-		PNGifs.clear();
 		try{
-			isClosed = true;
+			PNGifs.clear();
 			PNGifs.close();
+			if(PNGifs.rdstate()){
+				if(!fn.length()) return pngraise(PNGerr::io_err::empty_filename("close()"));
+				return pngraise(PNGerr::io_err::io_close(fn.data()));
+			}
+			isClosed = true;
+			/* try{ */
+			/* 	isClosed = true; */
+			/* 	PNGifs.exceptions(PNGifs.failbit); */
+			/* 	PNGifs.close(); */
+			/* 	std::cout << PNGifs.rdstate() << "\n"; */
+			/* } */
+			/* catch(...){ */
+			/* 	std::cout << PNGifs.rdstate() << "\n"; */
+			/* 	return pngraise(PNGerr::io_err::io_close(fn.data())); */
+			/* } */
+			pnglog(PNGmessage(std::string(fn.data())+": Closing the File."));
 		}
-		catch(...){
-			return pngraise(PNGerr::io_err::io_close(fn.data()));
+		catch(const std::bad_alloc &c){
+			return pngraise(memer);
 		}
-		pnglog(PNGmessage(std::string(fn.data())+": Closing the File."));
 		return neutralMsg;
 	}
 
@@ -45,7 +64,7 @@ namespace PNG{
 		buffStream.next_in = Z_NULL;
 		switch(inflateInit(&buffStream)){
 			case Z_MEM_ERROR:
-				throw(PNGerr::memory());
+				return pngraise(memer);
 				break;
 			case Z_OK:
 				break;
@@ -63,37 +82,40 @@ namespace PNG{
 			if(readIHDR()) return msgLs.back();
 			decompressedData.resize(static_cast<size_t>(1.1*(height+(width/bitsMult)*height*pixelBytes)));
 			//rawPixelData.resize(decompressedData.size()-height);
-			auto start = std::chrono::steady_clock::now();
 			while(!(IEND.exist)) if(readChunk()) return msgLs.back();
 #if !INTLEA
 			if(decompr()) return msgLs.back(); //This was used when the inflation process was done in the end and not interleaved.
 #endif
 #if !INTFIL
 			if(defilter()) return msgLs.back();
-			auto stop = std::chrono::steady_clock::now();
 #else
-			auto stop = std::chrono::steady_clock::now();
 			decompressedData.resize(buffStream.total_out); // for interleaved filtering- slower than final filtering
 			rawPixelData.resize(buffStream.total_out-height);
 			inflateEnd(&buffStream);
 #endif
-			std::chrono::duration<double> dist = stop-start;
-			std::cout << dist.count() << "\n";
 			return neutralMsg;
 		}
 		catch(const std::ios_base::failure & e){
-			if(PNGifs.eof()){
-				if(IEND.exist){
-					PNGifs.clear();	
-					return neutralMsg;
+			try{
+				if(PNGifs.eof()){
+					if(IEND.exist){
+						PNGifs.clear();	
+						return neutralMsg;
+					}
+					else{
+						return pngraise(PNG::PNGerr::io_err::file_end_prematurely(fn.data()));
+					}
 				}
 				else{
-					return pngraise(PNG::PNGerr::io_err::file_end_prematurely(fn.data()));
+					return pngraise(PNG::PNGerr::io_err::io_stream(fn.data()));
 				}
 			}
-			else{
-				return pngraise(PNG::PNGerr::io_err::io_stream(fn.data()));
+			catch(const std::bad_alloc & c){
+				return pngraise(memer);
 			}
+		}
+		catch(const std::bad_alloc & c){
+			return pngraise(memer);
 		}
 		catch(const PNGmsgBase * e){
 			throw(e);
@@ -104,9 +126,9 @@ namespace PNG{
 		std::streamoff tempPos{PNGifs.tellg()};
 		PNGifs.read(buf1.data(), infoSize);
 		uint32_t chunkSize{btoi(buf1)};
+		if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data()));
 		PNGifs.read(buf1.data(), infoSize);
 		if(!(buf1.compare(critID[plte]))){
-			if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data()));
 			if(IHDR.data[color] == 3){
 				if(PLTE.exist){
 					return pngraise(PNGerr::chunk_err::multiple(fn.data(), critID[plte].data()));
@@ -122,7 +144,7 @@ namespace PNG{
 			}
 		}
 		else if(!(buf1.compare(critID[idat]))){
-			if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data()));
+			/* if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data())); */
 			if((IHDR.data[color] == 3) && (!(PLTE.exist))) return pngraise(PNGerr::chunk_err::not_found(fn.data(), critID[plte].data()));
 			else{
 				IDAT.push_back(chunk_t(chunkSize, tempPos, critID[idat], {}, {}, true));
@@ -130,7 +152,7 @@ namespace PNG{
 			}
 		}
 		else if(!(buf1.compare(critID[iend]))){
-			if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data()));
+			/* if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data())); */
 			if(!(IDAT.size())) return pngraise(PNGerr::chunk_err::not_found(fn.data(), critID[idat].data()));
 			PNGifs.exceptions(std::ifstream::badbit);
 			PNGifs.read(buf2.data(), infoSize);
@@ -145,22 +167,27 @@ namespace PNG{
 			return neutralMsg;
 		}
 		else{
-			for(size_t i{}; i<anChunksSNum; i++){
+			for(size_t i{}; i<anChunksNum; i++){
 				if(!(buf1.compare(ancID[i]))){
-					if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data()));
-					if(anChunksS[i].exist) return pngraise(PNGerr::chunk_err::multiple(fn.data(), ancID[i].data()));
-					anChunksS[i].size = chunkSize;
-					anChunksS[i].pos = tempPos;
-					return readAncS(i);
+					/* if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data())); */
+					if(i < anChunksSNum){
+						if(anChunksS[i].exist) return pngraise(PNGerr::chunk_err::multiple(fn.data(), ancID[i].data()));
+						anChunksS[i].size = chunkSize;
+						anChunksS[i].pos = tempPos;
+					}
+					else{
+						anChunksM[i-anChunksSNum].push_back(chunk_t(chunkSize, tempPos, ancID[i], {},  ancCRC[i], true));
+					}
+					return readAncillary(i);
 				}
 			}
-			for(size_t i{}; i<anChunksMNum; i++){
-				if(!(buf1.compare(ancID[i+anChunksSNum]))){
-					if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data()));
-					anChunksM[i].push_back(chunk_t(chunkSize, tempPos, ancID[anChunksSNum+i], {},  ancCRC[anChunksSNum+i], true));
-					return readAncM(i);
-				}
-			}
+			/* for(size_t i{}; i<anChunksMNum; i++){ */
+			/* 	if(!(buf1.compare(ancID[i+anChunksSNum]))){ */
+			/* 		/1* if(chunkSize > fs) return pngraise(PNGerr::chunk_err::bad_chunk_size(fn.data(), buf1.data())); *1/ */
+			/* 		anChunksM[i].push_back(chunk_t(chunkSize, tempPos, ancID[anChunksSNum+i], {},  ancCRC[anChunksSNum+i], true)); */
+			/* 		return readAncM(i); */
+			/* 	} */
+			/* } */
 		}
 		if(!(buf1.compare(critID[ihdr]))) return pngraise(PNGerr::chunk_err::multiple(fn.data(), critID[ihdr].data()));
 		return pngraise(PNGerr::chunk_err::unrecognized(fn.data(),buf1.data()));
@@ -288,27 +315,37 @@ namespace PNG{
 #endif
 	}
 
-	const message& iPNG::readAncS(int i){
+	const message& iPNG::readAncillary(int i){
 		pnglog(PNGwarning(std::string("Ancillary chunk with name \"")+ancID[i].data()+"\" is not supported."));
-		anChunksS[i].data.resize(anChunksS[i].size);
-		PNGifs.read(rcp(anChunksS[i].data.data()),anChunksS[i].size);
-		anChunksS[i].crc = crc32(ancCRC[i], anChunksS[i].data.data(),  anChunksS[i].size);
-		PNGifs.read(buf1.data(),infoSize);
-		if(btoi(buf1) != anChunksS[i].crc) return pngraise(PNGerr::chunk_err::bad_crc32(fn.data(),ancID[i].data()));
-		anChunksS[i].exist = true;
+		if(i < anChunksSNum){
+			anChunksS[i].data.resize(anChunksS[i].size);
+			PNGifs.read(rcp(anChunksS[i].data.data()),anChunksS[i].size);
+			anChunksS[i].crc = crc32(ancCRC[i], anChunksS[i].data.data(),  anChunksS[i].size);
+			PNGifs.read(buf1.data(),infoSize);
+			if(btoi(buf1) != anChunksS[i].crc) return pngraise(PNGerr::chunk_err::bad_crc32(fn.data(),ancID[i].data()));
+			anChunksS[i].exist = true;
+		} else{
+			int ref{i-anChunksSNum};
+			anChunksM[ref].back().data.resize(anChunksM[ref].back().size);
+			PNGifs.read(rcp(anChunksM[ref].back().data.data()), anChunksM[ref].back().size);
+			anChunksM[ref].back().crc = crc32(ancCRC[i], anChunksM[ref].back().data.data(), anChunksM[ref].back().size);
+			PNGifs.read(buf1.data(), infoSize);
+			if(btoi(buf1) != anChunksM[ref].back().crc) return pngraise(PNGerr::chunk_err::bad_crc32(fn.data(), ancID[i].data()));
+			anChunksM[ref].back().exist = true;
+		}
 		return neutralMsg;
 	}
 
-	const message& iPNG::readAncM(int i){
-		pnglog(PNGwarning(std::string("Ancillary chunk with name \"")+ancID[i+anChunksSNum].data()+"\" is not supported."));
-		anChunksM[i].back().data.resize(anChunksM[i].back().size);
-		PNGifs.read(rcp(anChunksM[i].back().data.data()), anChunksM[i].back().size);
-		anChunksM[i].back().crc = crc32(ancCRC[i+anChunksSNum], anChunksM[i].back().data.data(), anChunksM[i].back().size);
-		PNGifs.read(buf1.data(), infoSize);
-		if(btoi(buf1) != anChunksM[i].back().crc) return pngraise(PNGerr::chunk_err::bad_crc32(fn.data(), ancID[i+anChunksSNum].data()));
-		anChunksM[i].back().exist = true;
-		return neutralMsg;
-	}
+	/* const message& iPNG::readAncM(int i){ */
+	/* 	pnglog(PNGwarning(std::string("Ancillary chunk with name \"")+ancID[i+anChunksSNum].data()+"\" is not supported.")); */
+	/* 	anChunksM[i].back().data.resize(anChunksM[i].back().size); */
+	/* 	PNGifs.read(rcp(anChunksM[i].back().data.data()), anChunksM[i].back().size); */
+	/* 	anChunksM[i].back().crc = crc32(ancCRC[i+anChunksSNum], anChunksM[i].back().data.data(), anChunksM[i].back().size); */
+	/* 	PNGifs.read(buf1.data(), infoSize); */
+	/* 	if(btoi(buf1) != anChunksM[i].back().crc) return pngraise(PNGerr::chunk_err::bad_crc32(fn.data(), ancID[i+anChunksSNum].data())); */
+	/* 	anChunksM[i].back().exist = true; */
+	/* 	return neutralMsg; */
+	/* } */
 
 	const message& iPNG::decompr(){
 #if INTLEA
