@@ -20,14 +20,14 @@ namespace PNG{
 			 * The library can be set to
 			 * 	  automatically print error messages onto the terminal in different ways. The first character
 			 * 	  indicates which messages to display: \n 
-			 * 	  	-q Quiet mode. Prints no messages. \n 
-			 * 	  	-s Soft Mode. Displays only Errors, no warnings or other messages. \n 
-			 * 	  	-v Verbose Mode. Displays every kind of message. In reality only q and s are checked. 
+			 * 	  	PNG::Quiet Quiet mode. Prints no messages. \n 
+			 * 	  	PNG::Soft Soft Mode. Displays only Errors, no warnings or other messages. \n 
+			 * 	  	PNG::Verbose Verbose Mode. Displays every kind of message. In reality only q and s are checked. 
 			 * 	  	   Any character that isn't one of those two will default to this. \n 
 			 * 	  The second character indicates the Display text formatting: \n 
-			 * 	  	-s Short Message. The Message is displayed in a short format, e.g.: \n 
+			 * 	  	PNG::Short Short Message. The Message is displayed in a short format, e.g.: \n 
 			 * 	  		Warning: Ancillary chunk with name "cHRM" is not supported. \n 
-			 * 	  	-l Long Message. The message is displayed in a long format, e.g.: \n 
+			 * 	  	PNG::Long Long Message. The message is displayed in a long format, e.g.: \n 
 			 * 	  	  	Message Type:  Error \n 
 			 *		  	Message Code:  1 \n 
 			 *		  	Description :  noexist.png: Fatal I/O Error. The file either does not exist or it is inaccessible. \n 
@@ -36,7 +36,8 @@ namespace PNG{
 			 * 	  If ANSI colour codes are supported, each type of message will have different colour schemes.
 			 *
 			 */
-			iPNG(std::string_view f, std::string_view flags = "ss") :  basic_PNG(f, &PNGifs, flags), PNGifs{}{(*this).open(f);};
+			iPNG(std::string_view f, const uint8_t flags = (PNG::Verbose | PNG::Short)) :  basic_PNG(f, &PNGifs, flags), PNGifs{}{(*this).open(f);};
+			/* iPNG(std::string_view f, std::string_view flags = "ss") :  basic_PNG(f, &PNGifs, flags), PNGifs{}{(*this).open(f);}; */ //Deprecated
 			//read PNGlib.h for explanation
 			iPNG(const iPNG &t) = delete;
 			iPNG & operator=(const iPNG &t) = delete;
@@ -83,10 +84,13 @@ namespace PNG{
 			void test2(){
 			};
 
+			/* const chunk_t & getIDAT(){return IDAT.front();}; */
+			const std::vector<chunk_t> & getIDAT(){return IDAT;};
+
 			/**
 			 * @brief iPNG destructor. Calls PNG::iPNG::close() to try to close the file automatically before it gets destroyed (if it wasn't already closed).
 			 */
-			~iPNG() noexcept override {if(!isClosed) (*this).close();bPNGios = nullptr;};
+			~iPNG() noexcept override {if(!isClosed) /*(*this).close()*/;bPNGios = nullptr;};
 		private:
 			//conversion function for 4 bytes of chars to single integer	
 			//file stream interface variables

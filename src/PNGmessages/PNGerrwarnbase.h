@@ -48,13 +48,13 @@ namespace PNG{
 	
 	inline void printMsg(const message&  m, bool softMsg = true, bool shortMsg = true) noexcept{
 		if(softMsg){
-			if(!(m.code())) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());	
+			if(m.code()) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());	
 		}
 		else (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());
 	}
 	inline void printMsg(const PNGmsgBase & m, bool softMsg = true, bool shortMsg = true) noexcept{
 		if(softMsg){
-			if(!(m.code())) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());	
+			if(m.code()) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());	
 		}
 		else (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());
 	}

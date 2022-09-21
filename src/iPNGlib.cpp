@@ -1,7 +1,7 @@
 #include "iPNGlib.h"
 
 #define INTLEA 1 
-#define INTFIL 0  
+#define INTFIL 1  
 
 namespace PNG{
 	const message& iPNG::open(std::string_view t) PNGEXC {
@@ -31,22 +31,14 @@ namespace PNG{
 	const message& iPNG::close(){
 		try{
 			PNGifs.clear();
-			PNGifs.close();
-			if(PNGifs.rdstate()){
-				if(!fn.length()) return pngraise(PNGerr::io_err::empty_filename("close()"));
+			if(!fn.length()) return pngraise(PNGerr::io_err::empty_filename("close()"));
+			try{
+				PNGifs.close();
+			}
+			catch(...){
 				return pngraise(PNGerr::io_err::io_close(fn.data()));
 			}
 			isClosed = true;
-			/* try{ */
-			/* 	isClosed = true; */
-			/* 	PNGifs.exceptions(PNGifs.failbit); */
-			/* 	PNGifs.close(); */
-			/* 	std::cout << PNGifs.rdstate() << "\n"; */
-			/* } */
-			/* catch(...){ */
-			/* 	std::cout << PNGifs.rdstate() << "\n"; */
-			/* 	return pngraise(PNGerr::io_err::io_close(fn.data())); */
-			/* } */
 			pnglog(PNGmessage(std::string(fn.data())+": Closing the File."));
 		}
 		catch(const std::bad_alloc &c){
@@ -340,7 +332,7 @@ namespace PNG{
 	/* 	pnglog(PNGwarning(std::string("Ancillary chunk with name \"")+ancID[i+anChunksSNum].data()+"\" is not supported.")); */
 	/* 	anChunksM[i].back().data.resize(anChunksM[i].back().size); */
 	/* 	PNGifs.read(rcp(anChunksM[i].back().data.data()), anChunksM[i].back().size); */
-	/* 	anChunksM[i].back().crc = crc32(ancCRC[i+anChunksSNum], anChunksM[i].back().data.data(), anChunksM[i].back().size); */
+	/* 	anChunks[i].back().crc = crc32(ancCRC[i+anChunksSNum], anChunksM[i].back().data.data(), anChunksM[i].back().size); */
 	/* 	PNGifs.read(buf1.data(), infoSize); */
 	/* 	if(btoi(buf1) != anChunksM[i].back().crc) return pngraise(PNGerr::chunk_err::bad_crc32(fn.data(), ancID[i+anChunksSNum].data())); */
 	/* 	anChunksM[i].back().exist = true; */

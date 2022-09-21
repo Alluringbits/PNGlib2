@@ -14,7 +14,98 @@
 
 namespace PNG{
 
-	class basic_PNG{
+	enum flags : uint8_t { Quiet = 1, Soft = 2, Verbose = 4, Short = 8, Long = 16};
+
+	/**
+	 * @brief Struct used for the chunks inside the PNG image.
+	 *
+	 * Everything inside the PNG is contained by this class, except for the initial 88888888 bytes of header information in every PNG.
+	 */
+	struct chunk_t {//usage of chunk_t::data requires first to resize it to the chunk_t::size value, then the chunk_t::data::data() can be used to return the pointer for the read(*,n) func
+
+		/**
+		 * @brief Empty constructor. 
+		 *
+		 * Resizes the data array to 0, might be unnecessary.
+		 */
+		chunk_t() noexcept: size{}, pos{}, name{}, data{}, data2{}, crc{}, exist{}{data.resize(0);};
+		//constexpr chunkStruct_t(uint32_t s, std::initializer_list<uint8_t> n, uint8_t * d, std::initializer_list<uint8_t>  c) : size{s}, data{d}{std::copy(n.begin(), n.end(), name); std::copy(c.begin(), c.end(), crc);}; //failed std::initializer_list ctor
+		/**
+		 * @brief chunk_t Constructor.
+		 *
+		 * @param s Total Size of the chunk, this is the internal size of the chunk, the number of bytes between the chunk name and the CRC32 (both excluded).
+		 * @param p std::streamoff offset position of the start of the chunk (first byte of the chunk size) in the image, starting from 0 included.
+		 * @param n Name of the chunk. These are internally saved inside the basic_PNG chunk as constexpr and static.
+		 * @param d First main data container for the chunk. It's an std::vector<unsigned char> that contains the complete raw information inside the chunk (size, name and CRC32 excluded).
+		 * @param c This is the CRC32 checksum for the chunk (chunk name + chunk data). In the constructor it's used to give the already calculated CRC32 checksum of the already known chunk names.
+		 * @param e This bool is used to note whether the chunk exists or not.
+		 */
+		chunk_t(uint32_t s, std::streamoff p, std::string_view n, std::initializer_list<unsigned char> d, uint32_t c, bool e) : size{s}, pos{p}, name{n}, data{d}, data2{}, crc{c}, exist{e}{data.shrink_to_fit();};
+		/**
+		 * @brief Standard default move constructor.
+		 *
+		 * @param t chunk_t to be moved.
+		 */
+		chunk_t(chunk_t && t) noexcept = default;
+		/**
+		 * @brief Standard default copy constructor.
+		 *
+		 * @param t chunk_t to be copied.
+		 */
+		chunk_t(const chunk_t & t) noexcept = default;
+		/**
+		 * @brief Standard default copy operator = constructor.
+		 *
+		 * @param t chunk_t to be copied.
+		 *
+		 * @return copied chunk_t.
+		 */
+		chunk_t& operator=(const chunk_t & t) noexcept = default;
+		/**
+		 * @brief Standard default move operator = constructor.
+		 *
+		 * @param t chunk_t to be moved.
+		 *
+		 * @return moved chunk_t.
+		 */
+		chunk_t& operator=(chunk_t && t) noexcept = default;
+		/**
+		 * @brief Standard destructor.
+		 */
+		~chunk_t() noexcept{};
+
+		uint32_t size; 
+		std::streamoff pos; //position in the file of the beginning of the chunk, starting from the 4 bytes long chunk size sequence. e.g. pos is ALWAYS 8 (sigSize) for IHDR and it's NEVER 0 for ANY chunk - will be used for file health checking operations
+		std::string_view name; //std::string_view better for optimizations and faster to deal with, especially for safe constructor of the chunk_t and destruction compared to static array of unsigned chars
+		
+		std::vector<unsigned char> data; //due to  memory allocation issues it may be better to use std::vector rather than raw pointers
+		std::variant<std::vector<unsigned char>, double> data2; //secondary optional storage for the chunk e.g. un/compressed data etc
+		uint32_t crc;
+
+
+		bool exist;
+
+
+			
+			//deprecated, usage of C-array for data
+			//constexpr chunk_t(const chunk_t & t) noexcept : size{t.size}, pos{t.pos}, name{t.name}, data{static_cast<uint8_t *>(std::calloc(size, sizeof(uint8_t)))}, crc{t.crc}{std::strncpy(static_cast<char *>(data), static_cast<char *>(t.data), size);}; //this one works equivalently, no assurance on memory security with the 
+			
+		/**
+		 * @brief Reset function, const safe.
+		 */
+		void reset() noexcept{
+			this->size = 0;
+			this->pos = 0;
+			this->data.clear();
+			if(double * pval = std::get_if<double>(&(this->data2))) *pval = 0;
+			else{ std::get<0>(this->data2).clear(); std::get<0>(this->data2).shrink_to_fit();}
+			this->data.shrink_to_fit();
+			this->crc = 0;
+			this->exist = false;
+		}	
+	};
+
+	class basic_PNG {
 		public:
 			/**
 			 * @brief Default empty constructor. bPNGios was intended as a single variable for both inherited input and output file stream,
@@ -30,10 +121,16 @@ namespace PNG{
 			 * See PNG::iPNG::iPNG() for details on the error modes and flags. 
 			 * The constructor calls the function used to initialize ancillaty chunks initanC().
 			 */
-			basic_PNG(const std::string_view filename, const std::string_view flags = "ss") noexcept : fn{filename}, bPNGios{nullptr}{
+			basic_PNG(const std::string_view filename, const uint8_t flags = (PNG::Verbose | PNG::Short)) noexcept : fn{filename}, bPNGios{nullptr}{
 				livePrint(flags);
 				initanC();
 			};
+
+			/* basic_PNG(const std::string_view filename, const std::string_view flags = "ss") noexcept : fn{filename}, bPNGios{nullptr}{ */
+			/* 	livePrint(flags); */
+			/* 	initanC(); */
+			/* }; */
+
 			virtual const message& open(std::string_view) PNGEXC = 0;
 			virtual const message& close() = 0;
 			/**
@@ -99,21 +196,28 @@ namespace PNG{
 			}
 
 
-			void livePrint(const std::string_view flags = "ss") noexcept{
-				if(flags[0] == 's'){
-					softMsg = true;
-					quietMsg = false;
-				}
-				else if(flags[0] == 'q'){
-					softMsg= false;
-					quietMsg = true;
-				}
-				else{
-					softMsg = false;
-					quietMsg = false;
-				}
-				(flags[1] == 's') ? (shortMsg = true) : (shortMsg = false);
-			}
+			void livePrint(const uint8_t flags = (PNG::Verbose | PNG::Short)) noexcept{
+				if(flags & PNG::Short) shortMsg = true;
+			      	if(flags & PNG::Soft) softMsg = true;
+				else if(flags & PNG::Quiet) quietMsg = true;
+			}	
+
+			//Deprecated
+/* 			void livePrint(const std::string_view flags = "ss") noexcept{ */
+/* 				if(flags[0] == 's'){ */
+/* 					softMsg = true; */
+/* 					quietMsg = false; */
+/* 				} */
+/* 				else if(flags[0] == 'q'){ */
+/* 					softMsg= false; */
+/* 					quietMsg = true; */
+/* 				} */
+/* 				else{ */
+/* 					softMsg = false; */
+/* 					quietMsg = false; */
+/* 				} */
+/* 				(flags[1] == 's') ? (shortMsg = true) : (shortMsg = false); */
+/* 			} */
 
 			void setThrow(bool a){PNGTRW = a;};
 
@@ -134,46 +238,6 @@ namespace PNG{
 			bool PNGTRW{false};	
 			//types declarations string_view and chunk_t
 			//using sv=std::string_view; //
-			class chunk_t {//usage of chunk_t::data requires first to resize it to the chunk_t::size value, then the chunk_t::data::data() can be used to return the pointer for the read(*,n) func
-				public:
-				chunk_t() noexcept: size{}, pos{}, name{}, data{}, data2{}, crc{}, exist{}{data.resize(0);};
-				//constexpr chunkStruct_t(uint32_t s, std::initializer_list<uint8_t> n, uint8_t * d, std::initializer_list<uint8_t>  c) : size{s}, data{d}{std::copy(n.begin(), n.end(), name); std::copy(c.begin(), c.end(), crc);}; //failed std::initializer_list ctor
-				chunk_t(uint32_t s, uint32_t p, std::string_view n, std::initializer_list<unsigned char> d, uint32_t c, bool e) : size{s}, pos{p}, name{n}, data{d}, data2{}, crc{c}, exist{e}{data.shrink_to_fit();};
-			
-				chunk_t(const chunk_t & t) noexcept = default;
-				
-				//deprecated, usage of C-array for data
-				//constexpr chunk_t(const chunk_t & t) noexcept : size{t.size}, pos{t.pos}, name{t.name}, data{static_cast<uint8_t *>(std::calloc(size, sizeof(uint8_t)))}, crc{t.crc}{std::strncpy(static_cast<char *>(data), static_cast<char *>(t.data), size);}; //this one works equivalently, no assurance on memory security with the 
-				chunk_t& operator=(const chunk_t & t) noexcept = default;
-				
-				//move ctors, for consistency
-				chunk_t(chunk_t && t) noexcept = default;
-				chunk_t& operator=(chunk_t && t) noexcept = default;
-				~chunk_t() noexcept{};
-				
-				void reset() noexcept{
-					size = 0;
-					pos = 0;
-					data.clear();
-					if(double * pval = std::get_if<double>(&data2)) *pval = 0;
-					else{ std::get<0>(data2).clear(); std::get<0>(data2).shrink_to_fit();}
-					data.shrink_to_fit();
-					crc = 0;
-					exist = false;
-				}	
-
-				uint32_t size; 
-				std::streamoff pos; //position in the file of the beginning of the chunk, starting from the 4 bytes long chunk size sequence. e.g. pos is ALWAYS 8 (sigSize) for IHDR and it's NEVER 0 for ANY chunk - will be used for file health checking operations
-				std::string_view name; //std::string_view better for optimizations and faster to deal with, especially for safe constructor of the chunk_t and destruction compared to static array of unsigned chars
-				
-				std::vector<unsigned char> data; //due to  memory allocation issues it may be better to use std::vector rather than raw pointers
-				std::variant<std::vector<unsigned char>, double> data2; //secondary optional storage for the chunk e.g. un/compressed data etc
-				uint32_t crc;
-
-
-				bool exist;
-
-			};
 			
 			
 			//enums of internal chunk constants, ancillary chinks order indexes, IHDR bits array indexes
@@ -231,11 +295,15 @@ namespace PNG{
 			//file interface variables
 			std::string_view fn;
 			std::basic_ios<char> *bPNGios;
-			basic_PNG(std::string_view f, std::basic_ios<char> *pbs, std::string_view flags = "ss") noexcept : fn{f}, bPNGios{pbs}{
+			/* basic_PNG(std::string_view f, std::basic_ios<char> *pbs, std::string_view flags = "ss") noexcept : fn{f}, bPNGios{pbs}{ */
+			/* 	livePrint(flags); */
+			/* 	initanC(); */
+			/* }; */
+ //protected constructor for the derived classes
+			basic_PNG(std::string_view f, std::basic_ios<char> *pbs, const uint8_t flags = (PNG::Verbose | PNG::Short)) noexcept : fn{f}, bPNGios{pbs}{
 				livePrint(flags);
 				initanC();
 			};
- //protected constructor for the derived classes
 			//bool wasInitialized; //could be implemented in the future to throw an exception when doing ANYTHING in the base class that's dependent on the fstream when the fstream has NOT been implemented yet - might be ok to check bPNGios as boolean?
 			
 
@@ -279,7 +347,7 @@ namespace PNG{
 			unsigned char * pcr(char * t) const{
 				return reinterpret_cast<unsigned char *>(t);
 			}
-			bool softMsg{true}, quietMsg{false}, shortMsg{true}, isClosed{false};
+			bool softMsg{false}, quietMsg{false}, shortMsg{false}, isClosed{false};
 			
 			uint64_t base_crc{crc32(0L, NULL, 0)};
 
