@@ -1,8 +1,10 @@
 #pragma once
 
 #include "PNGincludes.h"
+#include "auxiliary.h"
 #include <fstream>
 #include <new>
+#include <array>
 
 #ifndef PNGEXC
 	#undef PNGEXC 
@@ -14,7 +16,6 @@
 
 namespace PNG{
 
-	enum flags : uint8_t { Quiet = 1, Soft = 2, Verbose = 4, Short = 8, Long = 16};
 
 	/**
 	 * @brief Struct used for the chunks inside the PNG image.
@@ -143,6 +144,7 @@ namespace PNG{
 			//std::basic_istream and std::basic_ostream have the copy ctors deleted, since the file interface is done through that, only the move ctors will be declared. A separated function can copy the data contents from one object PNG to another object PNG
 			basic_PNG& operator=(const basic_PNG& t) = delete;
 			basic_PNG(const basic_PNG& t) = delete;
+
 			//move ctors for consistency and usefulness
 			/**
 			 * @brief Default move constructor.
@@ -191,9 +193,6 @@ namespace PNG{
 				return msgLs;
 			}
 			
-			void printMsgList() const noexcept{
-				std::for_each(msgLs.cbegin(),msgLs.cend(), [](const message& m){printMsg(m, 0,1 );});
-			}
 
 
 			void livePrint(const uint8_t flags = (PNG::Verbose | PNG::Short)) noexcept{
@@ -224,13 +223,23 @@ namespace PNG{
 			
 			void reset() noexcept; //empties out everything, resets every byte and zeroes every char array
 
-			
+			const PNG::chunk_t & getIHDR() const noexcept {return IHDR;};
+			const std::vector<PNG::chunk_t> & getIDAT() const noexcept{return IDAT;};
+			const PNG::chunk_t & getPLTE() const noexcept{return PLTE;};
+			//const std::array<std::vector<PNG::chunk_t>, > & getAncillaryMultiple() const noexcept{return anChunksM;};
+			/* decltype(auto) ancillaryMultiple() const noexcept{return const_cast<const std::array<std::vector<PNG::chunk_t>, anChunksMNum>&>(anChunksM);}; */
+			const auto& ancillaryMultiple() const noexcept{ return anChunksM;};
+			//decltype(auto) ancillarySingle() const noexcept{return const_cast<const std::array<PNG::chunk_t, anChunksSNum>&>(anChunksS);};
+			/* auto ancillarySingle() const noexcept -> const std::array<PNG::chunk_t, anChunksSNum>& {return anChunksS;}; */
+			const auto& ancillarySingle() const noexcept{ return anChunksS;};
+			const std::vector<unsigned char> pixels() const noexcept{return rawPixelData;};
+			/* const std::variant<PNG::chunk_t , std::vector<PNG::chunk_t>> ancillary(PNG::anc i) const noexcept{if(i < anChunksSNum) return anChunksS[i]; return anChunksM[i];};// return (i < anChunksSNum) ? (anChunksS[i]) : (anChunksM[i]);}; */
 
 			void test(){
 				for(size_t i{}; i<=fn.size(); i++){
 				//	std::printf("%d\n", static_cast<int>(fn[i]));
 				}
-				//std::cout << (anChunks[3].data) << "\n";
+				/* std::cout << (anChunksS[gama].size) << "\n"; */
 			}	
 				
 		protected:
@@ -244,7 +253,7 @@ namespace PNG{
 			enum constants : int8_t	{infoSize=4, ihdrBitsNum=5, sigSize=8,ihdrSize=13}; 
 			enum anConsts : int8_t {anChunksMNum = 4, anChunksSNum = 10, anChunksNum = 14};
 			enum critical : int8_t 	{ihdr, plte, idat, iend};
-			enum ancillary : int8_t {tRNS, cHRM, gAMA, iCCP, sBIT, sRGB, tIME, bKGD, hIST, pHYs, sPLT, iTXt, tEXt, zTXt};
+			/* enum ancillary2 : int8_t {tRNS, cHRM, gAMA, iCCP, sBIT, sRGB, tIME, bKGD, hIST, pHYs, sPLT, iTXt, tEXt, zTXt}; */
 			enum ihdrbits : int8_t	{depth=8, color, compression, filter, interlace};
 
 			//std::string_view for critical and ancillary chunks identification names
@@ -274,8 +283,10 @@ namespace PNG{
 			//chunk_t array of ancillary chunks
 			//chunk_t anChunks[anChunksNum];
 			
-			chunk_t anChunksS[anChunksSNum];
-			std::vector<chunk_t> anChunksM[anChunksMNum];
+			//chunk_t anChunksS[anChunksSNum];
+			std::array<chunk_t, anChunksSNum> anChunksS{};
+			//std::vector<chunk_t> anChunksM[anChunksMNum];
+			std::array<std::vector<chunk_t>, anChunksMNum> anChunksM{};
 
 			std::vector<unsigned char> compressedData{};
 			std::vector<unsigned char> decompressedData{};
@@ -364,19 +375,7 @@ namespace PNG{
 				for(int i{3}; i>=0; i--) buf2[3-i] = static_cast<char>((l >> (8*i) & 255));
 				return buf2.data();
 			}	
-			constexpr void printHex(const char * l,size_t s) const noexcept{
-				for(size_t i{}; i<s; i++) std::printf("%#x ", l[i]);
-				std::printf("\n");
-			}
-			constexpr void printHex(const unsigned char * l, size_t s) const noexcept{
-				for(size_t i{}; i<s; i++) std::printf("%#x ", l[i]);
-				std::printf("\n");
-			}
-			void dumpHex(const char *fn, std::vector<unsigned char> & s) const noexcept{
-				std::ofstream file_out{fn, std::ios::out};
-				file_out.write(rcp(s.data()), s.size());
-				file_out.close();
-			}
+
 
 			std::string buf1{"\0\0\0\0", 4};
 			std::string buf2{"\0\0\0\0", 4};

@@ -28,6 +28,7 @@ namespace PNG{
 		}
 		return neutralMsg;
 	}
+
 	const message& iPNG::close(){
 		try{
 			PNGifs.clear();

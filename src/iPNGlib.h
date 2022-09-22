@@ -84,8 +84,6 @@ namespace PNG{
 			void test2(){
 			};
 
-			/* const chunk_t & getIDAT(){return IDAT.front();}; */
-			const std::vector<chunk_t> & getIDAT(){return IDAT;};
 
 			/**
 			 * @brief iPNG destructor. Calls PNG::iPNG::close() to try to close the file automatically before it gets destroyed (if it wasn't already closed).
