@@ -15,4 +15,15 @@ namespace PNG{
 		for(size_t i{}; i<anChunksMNum; i++) anChunksM[i].clear();
 	}
 
+		
+	void basic_PNG::initanC(){
+		for(size_t i{}; i<anChunksSNum; i++){
+			anChunksS[i].reset();
+			anChunksS[i].name = ancID[i];
+		}
+		for(size_t i{}; i<anChunksMNum; i++){
+			anChunksM[i].clear();
+		}
+	}	
+
 }

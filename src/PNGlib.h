@@ -1,7 +1,6 @@
 #pragma once
 
 #include "PNGincludes.h"
-#include "auxiliary.h"
 #include <fstream>
 #include <new>
 #include <array>
@@ -15,6 +14,10 @@
 
 
 namespace PNG{
+
+	enum flags : uint8_t { Quiet = 1, Soft = 2, Verbose = 4, Short = 8, Long = 16};
+	enum ancS : int8_t { trns,chrm,gama,iccp,sbit,srgb,time,bkgd,hist,phys};
+	enum ancM : int8_t {splt=10,itxt,text,ztxt};
 
 
 	/**
@@ -226,14 +229,14 @@ namespace PNG{
 			const PNG::chunk_t & getIHDR() const noexcept {return IHDR;};
 			const std::vector<PNG::chunk_t> & getIDAT() const noexcept{return IDAT;};
 			const PNG::chunk_t & getPLTE() const noexcept{return PLTE;};
-			//const std::array<std::vector<PNG::chunk_t>, > & getAncillaryMultiple() const noexcept{return anChunksM;};
 			/* decltype(auto) ancillaryMultiple() const noexcept{return const_cast<const std::array<std::vector<PNG::chunk_t>, anChunksMNum>&>(anChunksM);}; */
-			const auto& ancillaryMultiple() const noexcept{ return anChunksM;};
-			//decltype(auto) ancillarySingle() const noexcept{return const_cast<const std::array<PNG::chunk_t, anChunksSNum>&>(anChunksS);};
+			/* const auto& ancillaryMultiple() const noexcept{ return anChunksM;}; */
 			/* auto ancillarySingle() const noexcept -> const std::array<PNG::chunk_t, anChunksSNum>& {return anChunksS;}; */
-			const auto& ancillarySingle() const noexcept{ return anChunksS;};
+			/* const auto& ancillarySingle() const noexcept{ return anChunksS;}; */
 			const std::vector<unsigned char> pixels() const noexcept{return rawPixelData;};
 			/* const std::variant<PNG::chunk_t , std::vector<PNG::chunk_t>> ancillary(PNG::anc i) const noexcept{if(i < anChunksSNum) return anChunksS[i]; return anChunksM[i];};// return (i < anChunksSNum) ? (anChunksS[i]) : (anChunksM[i]);}; */
+			const PNG::chunk_t& ancillaryS(PNG::ancS i) const noexcept{return anChunksS[i];};
+			const std::vector<PNG::chunk_t>& ancillaryM(PNG::ancM i) const noexcept{return anChunksM[i-anChunksSNum];};
 
 			void test(){
 				for(size_t i{}; i<=fn.size(); i++){
@@ -293,15 +296,7 @@ namespace PNG{
 			std::vector<unsigned char> rawPixelData{};
 			
 			
-			void initanC(){
-				for(size_t i{}; i<anChunksSNum; i++){
-					anChunksS[i].reset();
-					anChunksS[i].name = ancID[i];
-				}
-				for(size_t i{}; i<anChunksMNum; i++){
-					anChunksM[i].clear();
-				}
-			}	
+			void initanC();
 			
 			//file interface variables
 			std::string_view fn;
@@ -330,6 +325,7 @@ namespace PNG{
 					return msgLs.back();
 				}
 			}
+			
 			const message& pngraise(PNG::PNGerr::memory & e){
 				try{
 					msgLs.push_back(e);
@@ -347,6 +343,7 @@ namespace PNG{
 					return msgLs.back();
 				}
 			}
+
 			template<typename T>
 			void pnglog(T && e){
 				msgLs.push_back(message(std::forward<T>(e)));
@@ -381,6 +378,13 @@ namespace PNG{
 			std::string buf2{"\0\0\0\0", 4};
 			z_stream buffStream;
 			
+			void printMsg(const message&  m, bool softMsg = true, bool shortMsg = true) noexcept{
+				if(softMsg){
+					if(m.code()) (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());	
+				}
+				else (shortMsg) ? std::printf("%s: %s\n",m.type().data(), m.what().data()) :std::printf("\nMessage Type:  %s\nMessage Code:  %d\nDescription :  %s\n", m.type().data(), m.code(), m.what().data());
+			}
+
 	};
 }
 
